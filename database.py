@@ -7,38 +7,48 @@ Base.metadata.create_all(engine)
 DBSession = sessionmaker(bind=engine)
 session = scoped_session(sessionmaker(bind=engine))
 
+def commit_and_close(session):
+    session.commit()
+    session.close()
+
+def rollback_and_close(session):
+    session.rollback()
+    session.close()
+
 def add_User(username,phone,address, password,cash):
     try:
         user_object = User(username=username,phone=phone,address=address,
         password=password,cash=round(cash,2))
         session.add(user_object)
-        session.commit()
+        commit_and_close(session)
     except:
-        session.rollback()
+        rollback_and_close(session)
         raise
 
 def add_Farm(Farm_name,bank_name,bank_account,phone,address,password):
     try:
         Farm_object = Farm(Farm_name=Farm_name,bank_name=bank_name,bank_account=bank_account,phone=phone,address=address,password=password)
         session.add(Farm_object)
-        session.commit()
+        commit_and_close(session)
     except:
-        session.rollback()
+        rollback_and_close(session)
         raise    
 
 def add_Product(Type,Owner,cost):
   try:
     product_object = Product(Type=Type,Owner=Owner,cost=round(cost,2))
     session.add(product_object)
-    session.commit()
+    commit_and_close(session)
   except:
-    session.rollback()
+    rollback_and_close(session)
     raise
 
 def query_product_by_id(id):
-   return  session.query(
+   cursor = session.query(
        Product).filter_by(
        id_table=id).first() 
+   session.close()
+   return cursor
 
 
 def update_cost_product_by_id(id):
@@ -46,27 +56,30 @@ def update_cost_product_by_id(id):
        Product).filter_by(
        id_table=id).first()
     product.cost = 0
-    session.commit()
+    commit_and_close(session)
 
 def update_cash_user_by_username(username,cost):
     user = session.query(
        User).filter_by(
        username=username).first()
     user.cash -= cost
-    session.commit()
+    commit_and_close(session)
 
 def query_user_by_username(username):
     a=session.query(User)
     b= a.filter_by(username=username)
     c=b.first()
+    session.close()
     return c
 
 def query_by_farmname(farmname):
-    return session.query(Farm).filter_by(Farm_name = farmname).first()
+    result = session.query(Farm).filter_by(Farm_name = farmname).first()
+    session.close()
+    return result
 
 def delete_product_by_id(id):
     product = session.query(Product).filter_by(id_table=id).delete()
-    session.commit()
+    commit_and_close(session)
 
 def buy_product(username,product_id):
     user_cash = query_user_by_username(username).cash
@@ -80,7 +93,9 @@ def buy_product(username,product_id):
         return "not enough cash"
 
 def get_all_products():
-    return session.query(Product).all()
+    result = session.query(Product).all()
+    session.close()
+    return result
 
 
 def get_owner_products(Owner):
@@ -91,86 +106,106 @@ def get_all_users():
     return session.query(User).all()
 
 def get_all_farms():
-    return session.query(Farm).all()
+    result = session.query(Farm).all()
+    session.close()
+    return result
 
 def query_by_username_and_password(username, password):
-    return session.query(User).filter_by(username = username, password = password).first()
+    result = session.query(User).filter_by(username = username, password = password).first()
+    session.close()
+    return result
 
 def query_by_farmname_and_password(farmname, password):
-    return session.query(Farm).filter_by(Farm_name = farmname, password = password).first()
+    result = session.query(Farm).filter_by(Farm_name = farmname, password = password).first()
+    session.close()
+    return result
 
 def delete_all_users():
     session.query(User).delete()
-    session.commit()
+    commit_and_close(session)
 
 def delete_all_products():
     session.query(Product).delete()
-    session.commit()
+    commit_and_close(session)
 
 ##########################################################################
 
 def get_all_Types():
-    return session.query(Type).all()
+    result = session.query(Type).all()
+    session.close()
+    return result
 
 def query_type_by_name(Name):
-   return  session.query(Type).filter_by(Name=Name).first()
+   result = session.query(Type).filter_by(Name=Name).first()
+   session.close()
+   return result
 
 def get_minPrice(Name):
-  return  session.query(Type).filter_by(Name=Name).first().Min_price
+  result = session.query(Type).filter_by(Name=Name).first().Min_price
+  session.close()
+  return result
 
 def get_maxPrice(Name):
-  return  session.query(Type).filter_by(Name=Name).first().Max_price
+  result = session.query(Type).filter_by(Name=Name).first().Max_price
+  session.close()
+  return result
 
 def set_minPrice(Name,newMinPrice):
-  type = session.query(
+  res = session.query(
        Type).filter_by(
        Name=Name).first()
-  type.Min_price = newMinPrice
-  session.commit()
+  res.Min_price = newMinPrice
+  commit_and_close(session)
 
 def set_maxPrice(Name,newMaxPrice):
-  type = session.query(
+  res = session.query(
        Type).filter_by(
        Name=Name).first()
-  type.Max_price = newMaxPrice
-  session.commit()
+  res.Max_price = newMaxPrice
+  commit_and_close(session)
 
 def add_type(Name,img,min_price, max_price):
   try:
     product_object = Type(Name=Name,Img=img,Min_price=min_price, Max_price=max_price)
     session.add(product_object)
-    session.commit()
+    commit_and_close(session)
   except:
-    session.rollback()
+    rollback_and_close(session)
     raise
 
 def get_type_products_lowestPrice(Type):
     number = 0
-    all = session.query(Product).filter_by(Type=Type).all()
-    if all != []:
-      number = all[0].cost
-    for product in all:
+    res = session.query(Product).filter_by(Type=Type).all()
+    if res != []:
+      number = res[0].cost
+    for product in res:
       if product.cost < number:
         number = product.cost
+    session.close()
     return number
 
 def get_type_products_highestPrice(Type):
     number = 0
-    all = session.query(Product).filter_by(Type=Type).all()
-    if all != []:
-      number = all[0].cost
-    for product in all:
+    res = session.query(Product).filter_by(Type=Type).all()
+    if res != []:
+      number = res[0].cost
+    for product in res:
       if product.cost > number:
         number = product.cost
+    session.close()
     return number
 
 def get_type_products(Type):
-  return session.query(Product).filter_by(Type=Type).all()
+  result = session.query(Product).filter_by(Type=Type).all()
+  session.close
+  return result
 
 def query_product_by_id(id):
-   return  session.query(
+   result = session.query(
        Product).filter_by(
        id_table=id).first()  
+   session.close()
+   return result
 
 def update_min_max_types():
     types = session.query(Type).all()
